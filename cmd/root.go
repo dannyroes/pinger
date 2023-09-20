@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/dannyroes/pinger/data"
 	"github.com/dannyroes/pinger/output"
@@ -18,6 +17,7 @@ import (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "pinger host",
+	Args:  cobra.ExactArgs(1),
 	Short: "Ping a host a generate a downtime report",
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
@@ -28,23 +28,16 @@ var rootCmd = &cobra.Command{
 		}
 
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			state := []data.Status{{
-				Start: time.Now().Add(-2 * time.Hour),
-				// End:   time.Now().Add(-5 * time.Minute),
-				State: data.StatusUp,
-			},
-				{
-					Start: time.Now().Add(-3 * time.Hour),
-					End:   time.Now().Add(-2 * time.Hour),
-					State: data.StatusDown,
-				},
-			}
-
+			state := data.GetState()
+			fmt.Printf("%+v", state)
 			err := output.GeneratePage(w, state)
 			if err != nil {
 				fmt.Println(err)
 			}
 		})
+
+		fmt.Println("Running monitor")
+		data.MonitorUptime(args[0])
 
 		fmt.Println("Listening for requests")
 		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
