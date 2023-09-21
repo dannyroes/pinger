@@ -26,7 +26,7 @@ func (s *Status) String() string {
 
 func (s *Status) Duration() time.Duration {
 	if s.End.IsZero() {
-		return time.Now().Sub(s.Start).Round(time.Second)
+		return time.Since(s.Start).Round(time.Second)
 	} else {
 		return s.End.Sub(s.Start).Round(time.Second)
 	}
@@ -42,9 +42,10 @@ func (s *Status) TimeRange() string {
 
 var statusHistory []*Status
 var currentStatus *Status
-var successCount = 0
-var failCount = 0
+var successStart = time.Now()
+var failStart = time.Now()
 var m = sync.Mutex{}
+var stateDuration = 10 * time.Second
 
 func MonitorUptime(host string) {
 	fmt.Printf("ping %s\n", host)
@@ -54,12 +55,11 @@ func MonitorUptime(host string) {
 	}
 
 	m.Lock()
-	statusHistory = make([]*Status, 1)
+	statusHistory = make([]*Status, 0)
 	currentStatus = &Status{
 		State: StatusStart,
 		Start: time.Now(),
 	}
-	statusHistory[0] = currentStatus
 	m.Unlock()
 
 	c := make(chan time.Duration)
@@ -87,23 +87,19 @@ func MonitorUptime(host string) {
 					return
 				}
 
-				fmt.Println("got response")
 				if rtt < time.Second {
 					m.Lock()
-					failCount = 0
-					successCount++
+					failStart = time.Now()
 					processState()
 					tick = time.NewTimer(timeout)
 					m.Unlock()
 				} else {
-					fmt.Printf("ignoring response rtt %v", rtt)
+					fmt.Printf("ignoring late response rtt %v", rtt)
 				}
 
 			case <-tick.C:
-				fmt.Println("missed response")
 				m.Lock()
-				failCount++
-				successCount = 0
+				successStart = time.Now()
 				processState()
 				tick = time.NewTimer(timeout)
 				m.Unlock()
@@ -113,19 +109,19 @@ func MonitorUptime(host string) {
 }
 
 func processState() {
-	if successCount >= 5 && currentStatus.State != StatusUp {
+	if time.Since(successStart) > stateDuration && currentStatus.State != StatusUp {
 		fmt.Println("Status is now UP")
-		currentStatus.End = time.Now().Add(-1 * time.Second)
+		currentStatus.End = successStart
 		currentStatus = &Status{
-			Start: time.Now(),
+			Start: successStart.Add(time.Second),
 			State: StatusUp,
 		}
 		statusHistory = append([]*Status{currentStatus}, statusHistory...)
-	} else if failCount >= 5 && currentStatus.State != StatusDown {
+	} else if time.Since(failStart) > stateDuration && currentStatus.State != StatusDown {
 		fmt.Println("Status is now DOWN")
-		currentStatus.End = time.Now().Add(-1 * time.Second)
+		currentStatus.End = failStart
 		currentStatus = &Status{
-			Start: time.Now(),
+			Start: failStart.Add(time.Second),
 			State: StatusDown,
 		}
 		statusHistory = append([]*Status{currentStatus}, statusHistory...)
@@ -135,9 +131,7 @@ func processState() {
 func GetState() []*Status {
 	m.Lock()
 	s := make([]*Status, len(statusHistory))
-	for i, v := range statusHistory {
-		s[i] = v
-	}
+	copy(s, statusHistory)
 	m.Unlock()
 	return s
 }

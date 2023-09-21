@@ -29,7 +29,6 @@ var rootCmd = &cobra.Command{
 
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			state := data.GetState()
-			fmt.Printf("%+v", state)
 			err := output.GeneratePage(w, state)
 			if err != nil {
 				fmt.Println(err)
