@@ -25,7 +25,7 @@ func (s *Status) String() string {
 }
 
 func (s *Status) Duration() time.Duration {
-	if s.End.IsZero() {
+	if s.IsActive() {
 		return time.Since(s.Start).Round(time.Second)
 	} else {
 		return s.End.Sub(s.Start).Round(time.Second)
@@ -33,11 +33,38 @@ func (s *Status) Duration() time.Duration {
 }
 
 func (s *Status) TimeRange() string {
-	if s.End.IsZero() {
+	if s.IsActive() {
 		return fmt.Sprintf("(%s)", s.Start.Format(time.DateTime))
 
 	}
-	return fmt.Sprintf("(%s - %s)", s.Start.Format(time.DateTime), s.End.Format(time.DateTime))
+	return fmt.Sprintf("(%s to %s)", s.Start.Format(time.DateTime), s.End.Format(time.DateTime))
+}
+
+func (s *Status) IsActive() bool {
+	return s.End.IsZero()
+}
+
+func (s *Status) RelativeEnd() string {
+	if s.IsActive() {
+		return "now"
+	}
+
+	dur := time.Since(s.End)
+	str := ""
+
+	switch {
+	case dur > 2*time.Hour:
+		dur = dur.Round(time.Hour)
+		str = fmt.Sprintf("%v hours", dur.Hours())
+	case dur > 2*time.Minute:
+		dur = dur.Round(time.Minute)
+		str = fmt.Sprintf("%v minutes", dur.Minutes())
+	default:
+		dur = dur.Round(time.Second)
+		str = fmt.Sprintf("%v seconds", dur.Seconds())
+	}
+
+	return fmt.Sprintf("%v ago", str)
 }
 
 var statusHistory []*Status

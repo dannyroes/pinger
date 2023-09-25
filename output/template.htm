@@ -1,9 +1,47 @@
 <html>
     <head>
         <title>Pinger downtime stats</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/dark.css">
+        <meta http-equiv="refresh" content="10">
+        <style type="text/css">
+            .status {
+                display: inline-block;
+                font-size: 1.2rem;
+                font-weight: bold;
+                width: 4rem;
+            }
+
+            .duration {
+                font-size: 1.1rem;
+            }
+
+            .relativeEnd {
+                font-weight: bold;
+                font-size: 1.1rem;
+            }
+
+            .statusUP {
+                color:lawngreen;
+            }
+
+            .statusDOWN {
+                color:darkred;
+            }
+            
+            .timeRange {
+                font-size: 0.9rem;
+                color: darkgray;
+            }
+        </style>
     </head>
     <body>
         <h1>Downtime History</h1>
-        {{range .}}{{.}}<br>{{end}}
+        {{range .}}
+            <div><span class="status status{{.State}}">{{.State}}</span> 
+                {{if eq .IsActive false}}<span class="relativeEnd">{{.RelativeEnd}}</span>{{end}}
+                for <span class="duration">{{.Duration}}</span> 
+                 <span class="timeRange">{{.TimeRange}}</span></div>
+        {{end}}
     </body>
 </html>
