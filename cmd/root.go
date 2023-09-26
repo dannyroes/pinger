@@ -4,8 +4,8 @@ Copyright © 2023 Danny Roes
 package cmd
 
 import (
+	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 
@@ -22,6 +22,7 @@ var rootCmd = &cobra.Command{
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
+		ctx, cancel := context.WithCancel(context.Background())
 		port, err := cmd.Flags().GetInt("port")
 		if err != nil {
 			panic(err.Error())
@@ -35,11 +36,37 @@ var rootCmd = &cobra.Command{
 			}
 		})
 
+		input, err := cmd.Flags().GetString("input")
+		if err != nil {
+			panic(err.Error())
+		}
+
+		if input != "" {
+			err = data.InputState(input)
+			if err != nil {
+				fmt.Printf("Couldn't input state %v\n", err)
+			}
+		}
+
+		output, err := cmd.Flags().GetString("output")
+		if err != nil {
+			panic(err.Error())
+		}
+
+		if output != "" {
+			err = data.OutputState(ctx, output)
+			if err != nil {
+				fmt.Printf("Couldn't output state %v\n", err)
+			}
+		}
+
 		fmt.Println("Running monitor")
 		data.MonitorUptime(args[0])
 
 		fmt.Println("Listening for requests")
-		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
+		fmt.Println(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
+
+		cancel()
 	},
 }
 
@@ -54,4 +81,6 @@ func Execute() {
 
 func init() {
 	rootCmd.Flags().IntP("port", "p", 8080, "local port to listen for web requests")
+	rootCmd.Flags().StringP("output", "o", "", "output json file")
+	rootCmd.Flags().StringP("input", "i", "", "input json file")
 }

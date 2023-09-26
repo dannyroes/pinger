@@ -17,7 +17,6 @@
             }
 
             .relativeEnd {
-                font-weight: bold;
                 font-size: 1.1rem;
             }
 
@@ -30,18 +29,26 @@
             }
             
             .timeRange {
-                font-size: 0.9rem;
-                color: darkgray;
+                font-size: 0.8rem;
+                color: rgb(80, 80, 80);
+            }
+
+            .dataRow {
+                margin: 0.3rem;
+            }
+
+            .dataRow:nth-child(odd) {
+                background-color: rgba(128, 128, 128, 0.05)
             }
         </style>
     </head>
     <body>
         <h1>Downtime History</h1>
         {{range .}}
-            <div><span class="status status{{.State}}">{{.State}}</span> 
+            <div class="dataRow"><span class="status status{{.State}}">{{.State}}</span> 
                 {{if eq .IsActive false}}<span class="relativeEnd">{{.RelativeEnd}}</span>{{end}}
                 for <span class="duration">{{.Duration}}</span> 
-                 <span class="timeRange">{{.TimeRange}}</span></div>
+                 <div class="timeRange">{{.TimeRange}}</div></div>
         {{end}}
     </body>
 </html>
