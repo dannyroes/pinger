@@ -1,6 +1,3 @@
-/*
-Copyright © 2023 Danny Roes
-*/
 package cmd
 
 import (
@@ -17,13 +14,10 @@ import (
 
 var logLevel = new(slog.LevelVar)
 
-// rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "pinger host",
+	Use:   "pinger <host>",
 	Args:  cobra.ExactArgs(1),
-	Short: "Ping a host a generate a downtime report",
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
+	Short: "Ping a host and generate a downtime report",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx, cancel := context.WithCancel(context.Background())
 		debug, err := cmd.Flags().GetBool("debug")
@@ -80,8 +74,6 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
