@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"sync"
 	"time"
@@ -82,7 +83,7 @@ var m = sync.Mutex{}
 var stateDuration = 10 * time.Second
 
 func MonitorUptime(host string) {
-	fmt.Printf("ping %s\n", host)
+	slog.Debug("Starting ping monitor", "host", host)
 	pinger, err := probing.NewPinger(host)
 	if err != nil {
 		panic(err)
@@ -119,7 +120,7 @@ func MonitorUptime(host string) {
 			select {
 			case rtt, ok := <-c:
 				if !ok {
-					fmt.Println("done monitoring")
+					slog.Debug("Ending monitor")
 					return
 				}
 
@@ -130,7 +131,7 @@ func MonitorUptime(host string) {
 					tick = time.NewTimer(timeout)
 					m.Unlock()
 				} else {
-					fmt.Printf("ignoring late response rtt %v\n", rtt)
+					slog.Debug("Ignoring late response", "rtt", rtt)
 				}
 
 			case <-tick.C:
@@ -146,7 +147,7 @@ func MonitorUptime(host string) {
 
 func processState() {
 	if time.Since(successStart) > stateDuration && currentStatus.State != StatusUp {
-		fmt.Println("Status is now UP")
+		slog.Info("Status is now UP")
 		currentStatus.End = successStart
 		currentStatus = &Status{
 			Start: successStart.Add(time.Second),
@@ -154,7 +155,7 @@ func processState() {
 		}
 		statusHistory = append([]*Status{currentStatus}, statusHistory...)
 	} else if time.Since(failStart) > stateDuration && currentStatus.State != StatusDown {
-		fmt.Println("Status is now DOWN")
+		slog.Info("Status is now DOWN")
 		currentStatus.End = failStart
 		currentStatus = &Status{
 			Start: failStart.Add(time.Second),
@@ -187,12 +188,12 @@ func OutputState(ctx context.Context, file string) error {
 				out, err := json.Marshal(statusHistory)
 				m.Unlock()
 				if err != nil {
-					fmt.Printf("Couldn't generate output %v\n", err)
+					slog.Error("Couldn't generate output", "error", err)
 					return
 				}
 
 				if err = writeOutput(file, out); err != nil {
-					fmt.Printf("Couldn't write output %v\n", err)
+					slog.Error("Couldn't write output", "error", err)
 					return
 				}
 			case <-ctx.Done():
@@ -229,7 +230,7 @@ func InputState(file string) error {
 	d := json.NewDecoder(r)
 	err = d.Decode(&status)
 	if err != nil {
-		fmt.Println(err)
+		slog.Error("Couldn't parse input", "error", err)
 		return err
 	}
 
@@ -237,8 +238,6 @@ func InputState(file string) error {
 	statusHistory = status
 	currentStatus = statusHistory[0]
 	m.Unlock()
-
-	fmt.Println("loaded historical state from file")
 
 	return nil
 }

@@ -6,6 +6,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -13,6 +14,8 @@ import (
 	"github.com/dannyroes/pinger/output"
 	"github.com/spf13/cobra"
 )
+
+var logLevel = new(slog.LevelVar)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -23,6 +26,14 @@ var rootCmd = &cobra.Command{
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx, cancel := context.WithCancel(context.Background())
+		debug, err := cmd.Flags().GetBool("debug")
+		if err != nil {
+			panic(err.Error())
+		}
+		if debug {
+			logLevel.Set(slog.LevelDebug)
+		}
+
 		port, err := cmd.Flags().GetInt("port")
 		if err != nil {
 			panic(err.Error())
@@ -32,7 +43,7 @@ var rootCmd = &cobra.Command{
 			state := data.GetState()
 			err := output.GeneratePage(w, state)
 			if err != nil {
-				fmt.Println(err)
+				slog.Error("Couldn't generate page", "error", err)
 			}
 		})
 
@@ -44,7 +55,7 @@ var rootCmd = &cobra.Command{
 		if input != "" {
 			err = data.InputState(input)
 			if err != nil {
-				fmt.Printf("Couldn't input state %v\n", err)
+				slog.Error("Couldn't input state %v\n", "error", err)
 			}
 		}
 
@@ -56,15 +67,14 @@ var rootCmd = &cobra.Command{
 		if output != "" {
 			err = data.OutputState(ctx, output)
 			if err != nil {
-				fmt.Printf("Couldn't output state %v\n", err)
+				slog.Error("Couldn't output state %v\n", "error", err)
 			}
 		}
 
-		fmt.Println("Running monitor")
 		data.MonitorUptime(args[0])
 
-		fmt.Println("Listening for requests")
-		fmt.Println(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
+		slog.Info("Listening for requests", "port", port)
+		slog.Error("Stopped HTTP server", "error", http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 
 		cancel()
 	},
@@ -83,4 +93,8 @@ func init() {
 	rootCmd.Flags().IntP("port", "p", 8080, "local port to listen for web requests")
 	rootCmd.Flags().StringP("output", "o", "", "output json file")
 	rootCmd.Flags().StringP("input", "i", "", "input json file")
+	rootCmd.Flags().Bool("debug", false, "enable debug logging")
+
+	h := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel})
+	slog.SetDefault(slog.New(h))
 }
